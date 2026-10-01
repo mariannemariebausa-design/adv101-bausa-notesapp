@@ -1,69 +1,300 @@
-import Image from "next/image";
+"use client";
+
+import NoteItem from "@/components/NoteItem";
+import { useEffect, useState } from "react";
+
+type Note = {
+  id: number;
+  title: string;
+  description: string;
+};
 
 export default function Home() {
+  const [notes, setNotes] = useState<Note[]>([]);
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const savedNotes = localStorage.getItem("notes");
+
+    if (savedNotes) {
+      setNotes(JSON.parse(savedNotes));
+    }
+
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (loaded) {
+      localStorage.setItem("notes", JSON.stringify(notes));
+    }
+  }, [notes, loaded]);
+
+  const addNote = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!title.trim() || !description.trim()) {
+      alert("Please enter a title and description.");
+      return;
+    }
+
+    const noteExists = notes.some(
+      (note) =>
+        note.title.toLowerCase() === title.trim().toLowerCase()
+    );
+
+    if (noteExists) {
+      alert("A note with this title already exists.");
+      return;
+    }
+
+    const newNote: Note = {
+      id: Date.now(),
+      title: title.trim(),
+      description: description.trim(),
+    };
+
+    setNotes((previousNotes) => [
+      ...previousNotes,
+      newNote,
+    ]);
+
+    setTitle("");
+    setDescription("");
+  };
+
+  const deleteNote = (id: number) => {
+    setNotes((previousNotes) =>
+      previousNotes.filter((note) => note.id !== id)
+    );
+  };
+
+  const editNote = (note: Note) => {
+    setEditingId(note.id);
+    setEditTitle(note.title);
+    setEditDescription(note.description);
+  };
+
+  const updateNote = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!editTitle.trim() || !editDescription.trim()) {
+      alert("Please enter a title and description.");
+      return;
+    }
+
+    const duplicate = notes.some(
+      (note) =>
+        note.id !== editingId &&
+        note.title.toLowerCase() ===
+          editTitle.trim().toLowerCase()
+    );
+
+    if (duplicate) {
+      alert("Another note already has this title.");
+      return;
+    }
+
+    setNotes((previousNotes) =>
+      previousNotes.map((note) =>
+        note.id === editingId
+          ? {
+              ...note,
+              title: editTitle.trim(),
+              description: editDescription.trim(),
+            }
+          : note
+      )
+    );
+
+    cancelEdit();
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditTitle("");
+    setEditDescription("");
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="page">
+      <div className="container">
+
+        {/* HEADER */}
+        <header className="header">
+          <div>
+            <p className="small-title">
+              MY PERSONAL
+            </p>
+
+            <h1>Notes</h1>
+
+            <p className="subtitle">
+              Keep your thoughts organized 
+            </p>
+          </div>
+
+          <div className="note-count">
+            <span>{notes.length}</span>
+            <small>Notes</small>
+          </div>
+        </header>
+
+        {/* ADD NOTE */}
+        <section className="card">
+          <h2>Create a Note</h2>
+
+          <p className="section-description">
+            Write down something you want to remember.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+
+          <form onSubmit={addNote}>
+
+            <input
+              type="text"
+              placeholder="Note title"
+              value={title}
+              onChange={(e) =>
+                setTitle(e.target.value)
+              }
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+
+            <textarea
+              placeholder="Write your note here..."
+              value={description}
+              onChange={(e) =>
+                setDescription(e.target.value)
+              }
+              rows={5}
+            />
+
+            <button
+              type="submit"
+              className="add-button"
+            >
+              + Add Note
+            </button>
+
+          </form>
+        </section>
+
+        {/* NOTES */}
+        <section className="notes-section">
+
+          <div className="section-header">
+            <h2>My Notes</h2>
+
+            <p>
+              Your saved thoughts and reminders
+            </p>
+          </div>
+
+          {notes.length === 0 ? (
+            <div className="empty">
+
+              <div className="empty-icon">
+                ♡
+              </div>
+
+              <h3>No notes yet</h3>
+
+              <p>
+                Create your first note above.
+              </p>
+
+            </div>
+          ) : (
+            <div className="notes-grid">
+
+              {notes.map((note) => (
+                <NoteItem
+                  key={note.id}
+                  note={note}
+                  onDelete={deleteNote}
+                  onEdit={editNote}
+                />
+              ))}
+
+            </div>
+          )}
+
+        </section>
+
+        {/* EDIT MODAL */}
+        {editingId !== null && (
+          <div className="modal-overlay">
+
+            <div className="edit-modal">
+
+              <button
+                className="close-button"
+                onClick={cancelEdit}
+              >
+                ×
+              </button>
+
+              <h2>Edit Note</h2>
+
+              <p>
+                Make changes to your note.
+              </p>
+
+              <form onSubmit={updateNote}>
+
+                <input
+                  type="text"
+                  placeholder="Note title"
+                  value={editTitle}
+                  onChange={(e) =>
+                    setEditTitle(e.target.value)
+                  }
+                />
+
+                <textarea
+                  placeholder="Note description"
+                  value={editDescription}
+                  onChange={(e) =>
+                    setEditDescription(
+                      e.target.value
+                    )
+                  }
+                  rows={6}
+                />
+
+                <div className="edit-buttons">
+
+                  <button
+                    type="button"
+                    className="cancel-button"
+                    onClick={cancelEdit}
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="save-button"
+                  >
+                    Save Changes
+                  </button>
+
+                </div>
+
+              </form>
+
+            </div>
+
+          </div>
+        )}
+
+      </div>
+    </main>
   );
 }
